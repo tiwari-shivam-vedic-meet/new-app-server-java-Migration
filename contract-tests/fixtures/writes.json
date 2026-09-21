@@ -1,0 +1,85 @@
+[
+  {
+    "name": "notification_mark_read",
+    "nodePath": "/api/v1/notification/mark_read",
+    "javaPath": "/v2/v1/notification/mark_read",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "query": { "reqData": "${ENCRYPTED_NOTIFICATION_ID_REQ}" },
+    "ignore": [],
+    "_assertDoc": "notifications._id=${NOTIFICATION_ID}: readByReceiver contains ${USER_ID}. NOTE Node has no idempotency guard — a repeat call pushes the id again (duplicate). Response returns the PRE-update doc."
+  },
+  {
+    "name": "notification_mark_all_read",
+    "nodePath": "/api/v1/notification/mark_all_read",
+    "javaPath": "/v2/v1/notification/mark_all_read",
+    "method": "POST",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": {},
+    "ignore": ["result.modifiedCount", "result.matchedCount"],
+    "_assertDoc": "every notifications doc receiverId=${USER_ID} (or adminReceiverId contains it) now has ${USER_ID} in readByReceiver ($addToSet — idempotent)."
+  },
+  {
+    "name": "explore_action_like",
+    "nodePath": "/api/v1/explore/action",
+    "javaPath": "/v2/v1/explore/action",
+    "method": "PUT",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": { "reqData": "${ENCRYPTED_EXPLORE_ACTION_LIKE_REQ}" },
+    "ignore": [],
+    "_assertDoc": "explores._id=${EXPLORE_ID}: likes toggles a {userId:${USER_ID}} subdoc. Run twice → back to original (idempotent toggle). actionType=notRecommand writes the misspelled field 'notRecommed'."
+  },
+  {
+    "name": "live_like",
+    "nodePath": "/api/user/live_like",
+    "javaPath": "/v2/user/live_like",
+    "method": "PUT",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": { "reqData": "${ENCRYPTED_LIVE_LIKE_REQ}" },
+    "ignore": [],
+    "_assertDoc": "broadcasts._id=${BROADCAST_ID}: likes toggles ${USER_ID}. On like (not unlike) a comments doc {broadcastId,userId,comment:'<name> liked event'} is inserted."
+  },
+  {
+    "name": "follow_toggle",
+    "nodePath": "/api/user/follow",
+    "javaPath": "/v2/user/follow",
+    "method": "POST",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": { "reqData": "${ENCRYPTED_FOLLOW_REQ}" },
+    "ignore": [],
+    "_assertDoc": "type=FOLLOW: follows{userId,consultantId} toggles status; user_cons_rels.isUserFollowed mirrors it; response.count = follows.countDocuments({...,status:true}). type=FOLLOWLIST is intentionally NOT ported (throws FOLLOWLIST_NOT_PORTED)."
+  },
+  {
+    "name": "user_update",
+    "nodePath": "/api/user/update",
+    "javaPath": "/v2/user/update",
+    "method": "PUT",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "multipart": { "reqData": "${ENCRYPTED_USER_UPDATE_REQ}" },
+    "ignore": ["result.updatedAt"],
+    "_note": "multer route: multipart/form-data with reqData field (+ optional profileImage file).",
+    "_assertDoc": "users._id=${USER_ID}: name/details.* set from input (only when truthy AND not literal 'null'); details = {...oldDetails, ...newDetails}; registrationComplete=true iff all required fields present; streak increments. Response is the updated user (findOneAndUpdate {new:true})."
+  },
+  {
+    "name": "support_initiate_query",
+    "nodePath": "/api/v1/support/initiate_query",
+    "javaPath": "/v2/v1/support/initiate_query",
+    "method": "POST",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": { "reqData": "${ENCRYPTED_INITIATE_QUERY_REQ}" },
+    "ignore": ["result.threadId"],
+    "_note": "Side effects: calls chat-server POST /chats/create-thread-support (ChatServerClient, trust-all TLS like Node rejectUnauthorized:false); FCM push is a seam.",
+    "_assertDoc": "customer_support_queries: 1 new doc with ticketNumber '#QUERY_<n+1>' + threadId set; notificationns: 2 new docs (user receipt + admin system). Dedup: second identical call throws 'Query is already exist in pending state'."
+  },
+  {
+    "name": "support_chat_send",
+    "nodePath": "/api/v1/support/chat_send",
+    "javaPath": "/v2/v1/support/chat_send",
+    "method": "POST",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "multipart": { "reqData": "${ENCRYPTED_CHAT_SEND_REQ}" },
+    "ignore": ["result.createdAt", "result.updatedAt"],
+    "_note": "multer route (reqData field + optional file). User path only (isByAdmin=false).",
+    "_assertDoc": "customer_support_chats: 1 new doc with senderType=queryExist.userType; media set iff file uploaded; repliedMessage JSON-parsed. NODE BUG preserved: userId/consultantId are NOT set (Node referenced the model, not the user). Errors: 'Query does not exist' / 'Query is already resolved'."
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "master_android_user",
+    "nodePath": "/api/master?deviceType=ANDROID",
+    "javaPath": "/v2/master?deviceType=ANDROID",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "master_ios_user",
+    "nodePath": "/api/master?deviceType=IOS",
+    "javaPath": "/v2/master?deviceType=IOS",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "master_missing_token",
+    "nodePath": "/api/master",
+    "javaPath": "/v2/master",
+    "method": "GET",
+    "headers": {},
+    "ignore": []
+  }
+]

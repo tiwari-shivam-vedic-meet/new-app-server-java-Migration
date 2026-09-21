@@ -1,0 +1,11 @@
+target/
+.git/
+.idea/
+*.iml
+.vscode/
+.env
+application-local.yml
+src/main/resources/application-local.yml
+*.log
+README.md
+SETUP.md

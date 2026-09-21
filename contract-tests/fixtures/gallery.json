@@ -1,0 +1,10 @@
+[
+  {
+    "name": "gallery_profile_page1",
+    "nodePath": "/api/v1/gallery?consultantId=${CONSULTANT_ID}&galleryType=profile&page=1&limit=10",
+    "javaPath": "/v2/v1/gallery?consultantId=${CONSULTANT_ID}&galleryType=profile&page=1&limit=10",
+    "method": "GET",
+    "headers": {},
+    "ignore": []
+  }
+]

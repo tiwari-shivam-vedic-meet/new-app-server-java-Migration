@@ -1,0 +1,30 @@
+target/
+*.class
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
+.env
+application-local.yml
+application-local.properties
+
+# Recorded contract-test responses may contain real data — do not commit
+contract-tests/golden/
+node_modules/
+
+# Isolated build tooling / IDE junctions (reparse points) — never commit
+.maven-home/
+.amazonq/
+*.zip
+target/
+.env.local
+application-local.*
+
+# Real production/secret env files — NEVER commit. Only the *.example templates are tracked.
+ops/*.env
+appserver-prod.env
+application-prod-secrets.*
+
+# Prod config holds real secrets (baked into the jar at build, but never committed).
+application-prod.yml

@@ -1,0 +1,13 @@
+{
+  "name": "vedicmeet-contract-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Record Node responses, replay against Java /v2, diff. Gate for migrating endpoints.",
+  "scripts": {
+    "record": "node record.js",
+    "run": "node run.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,48 @@
+[
+  {
+    "name": "cons_popular",
+    "nodePath": "/api/user/cons/popular?page=1&limit=10",
+    "javaPath": "/v2/user/cons/popular?page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": [],
+    "_note": "Step 3. Ranking-sensitive: after diff-clean, spot-check the ordering matches Node."
+  },
+  {
+    "name": "cons_get_list",
+    "nodePath": "/api/user/cons/get-list?page=1&limit=10",
+    "javaPath": "/v2/user/cons/get-list?page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "consultant_details",
+    "nodePath": "/api/user/consultant_details?consultantId=${CONSULTANT_ID}",
+    "javaPath": "/v2/user/consultant_details?consultantId=${CONSULTANT_ID}",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": [],
+    "_note": "Step 4. Uses OfferService pricing — spot-check discountPrice per consultant."
+  },
+  {
+    "name": "consultant_list",
+    "nodePath": "/api/user/consultant_list",
+    "javaPath": "/v2/user/consultant_list",
+    "method": "POST",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": { "reqData": "${ENCRYPTED_CONSULTANT_LIST_REQ}" },
+    "ignore": [],
+    "_note": "Step 5. Encrypted reqData body; membership-gated + per-consultant pricing. Diff response AND spot-check pricing."
+  },
+  {
+    "name": "top_consultant_list",
+    "nodePath": "/api/user/top_consultant_list",
+    "javaPath": "/v2/user/top_consultant_list",
+    "method": "POST",
+    "headers": { "vm-user-auth": "${USER_JWT}", "Content-Type": "application/json" },
+    "body": { "reqData": "${ENCRYPTED_TOP_CONSULTANT_LIST_REQ}" },
+    "ignore": [],
+    "_note": "Step 5. Same family as consultant_list."
+  }
+]

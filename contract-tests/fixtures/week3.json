@@ -1,0 +1,58 @@
+[
+  {
+    "name": "membership_discount_list_recharge",
+    "nodePath": "/api/v1/membership-discount?type=recharge&page=1&limit=10",
+    "javaPath": "/v2/v1/membership-discount?type=recharge&page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "membership_discount_list_membership",
+    "nodePath": "/api/v1/membership-discount?type=membership&page=1&limit=10",
+    "javaPath": "/v2/v1/membership-discount?type=membership&page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "notification_list",
+    "nodePath": "/api/v1/notification?page=1&limit=10",
+    "javaPath": "/v2/v1/notification?page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "notification_count",
+    "nodePath": "/api/v1/notification/count",
+    "javaPath": "/v2/v1/notification/count",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  },
+  {
+    "name": "support_i18n_languages",
+    "nodePath": "/api/v1/support/i18n?type=languages",
+    "javaPath": "/v2/v1/support/i18n?type=languages",
+    "method": "GET",
+    "headers": {},
+    "ignore": []
+  },
+  {
+    "name": "support_i18n_language_en",
+    "nodePath": "/api/v1/support/i18n?type=language&language=en",
+    "javaPath": "/v2/v1/support/i18n?type=language&language=en",
+    "method": "GET",
+    "headers": {},
+    "ignore": []
+  },
+  {
+    "name": "support_list_technical",
+    "nodePath": "/api/v1/support?supportType=TECHNICAL&page=1&limit=10",
+    "javaPath": "/v2/v1/support?supportType=TECHNICAL&page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  }
+]

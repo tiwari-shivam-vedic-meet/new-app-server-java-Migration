@@ -1,0 +1,10 @@
+[
+  {
+    "name": "explore_page1",
+    "nodePath": "/api/v1/explore?page=1&limit=10",
+    "javaPath": "/v2/v1/explore?page=1&limit=10",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}" },
+    "ignore": []
+  }
+]

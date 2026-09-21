@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.4</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.vedicmeet</groupId>
+    <artifactId>new-app-server-java</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>new-app-server-java</name>
+    <description>Java/Spring Boot rewrite of the VedicMeet new-app-server (strangler migration, shared MongoDB)</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!-- Web / REST -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- MongoDB (same database as the Node service) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
+        <!-- Redis (cache / pub-sub, same instance as Node) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Request-body validation (mirrors the Node validators layer) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Authentication migration: servlet security context/filter chain + BCrypt. Endpoint-level
+             legacy response behavior remains in the existing VedicMeet role interceptor. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Admin forgot/reset-password delivery. Disabled by configuration unless explicitly wired. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Actuator: liveness/readiness probes + health for the gateway/orchestrator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Connection pooling for Redis (Lettuce) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
+        <!-- Socket.IO server (Prompt F). Provides the /app namespace + handshake auth + event
+             handlers that match the Node socket.io protocol byte-for-byte. Version pinned; runs
+             on Netty independently of the Tomcat HTTP port. -->
+        <dependency>
+            <groupId>com.corundumstudio.socketio</groupId>
+            <artifactId>netty-socketio</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+
+        <!-- Razorpay Java SDK (Prompt D): order create + payment fetch. Real calls need TEST
+             credentials at runtime; the order logic is unit-tested behind RazorpayGateway. -->
+        <dependency>
+            <groupId>com.razorpay</groupId>
+            <artifactId>razorpay-java</artifactId>
+            <version>1.4.8</version>
+        </dependency>
+
+        <!-- Official Paytm checksum utility for request signing and callback verification. -->
+        <dependency>
+            <groupId>com.paytm.pg</groupId>
+            <artifactId>paytm-checksum</artifactId>
+            <version>1.2.1</version>
+        </dependency>
+
+        <!-- AWS S3 SDK v2 (media upload): faithful port of utils/aws/upload.js awsUpload. The S3
+             client is built lazily from config, so the app boots without AWS credentials; the
+             key-generation logic is unit-tested without any network call. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.60</version>
+        </dependency>
+
+        <!-- Official LiveKit server SDK: participant tokens and Egress audio recording. The
+             provider remains independently OFF unless LIVEKIT_ENABLED=true and TEST credentials
+             are supplied; no credential is stored in source. -->
+        <dependency>
+            <groupId>io.livekit</groupId>
+            <artifactId>livekit-server</artifactId>
+            <version>0.13.0</version>
+        </dependency>
+
+        <!-- OpenAPI / Swagger UI (springdoc). Interactive API docs at /swagger-ui.html.
+             Used to give the team a clear, browsable view of the migrated endpoints for
+             onboarding. A GroupedOpenApi bean scopes the default view to the auth package. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
+        </dependency>
+
+        <!-- Tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- Local profile files may contain developer credentials. They must never be packaged
+             in the deployable jar; activate local settings explicitly from an external file. -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>application-local.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

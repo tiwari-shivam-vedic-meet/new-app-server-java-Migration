@@ -1,0 +1,18 @@
+[
+  {
+    "name": "updates_manifest_android",
+    "nodePath": "/api/updates/manifest.json?platform=android",
+    "javaPath": "/v2/updates/manifest.json?platform=android",
+    "method": "GET",
+    "headers": {},
+    "ignore": []
+  },
+  {
+    "name": "updates_manifest_all",
+    "nodePath": "/api/updates/manifest.json",
+    "javaPath": "/v2/updates/manifest.json",
+    "method": "GET",
+    "headers": {},
+    "ignore": []
+  }
+]

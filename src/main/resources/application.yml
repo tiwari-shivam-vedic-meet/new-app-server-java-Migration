@@ -1,0 +1,290 @@
+spring:
+  application:
+    name: new-app-server-java
+
+  # Fail fast if a required env var is missing, rather than silently using a bad default.
+  main:
+    banner-mode: "off"
+
+  lifecycle:
+    timeout-per-shutdown-phase: 25s   # let in-flight requests drain on deploy
+
+  data:
+    mongodb:
+      # SAME database as the Node service. Use the READ connection string for now
+      # (Week-1 migrates read-only endpoints). Never point this at a local copy of
+      # production data. Provide via env: MONGO_READ_URI
+      # Pool / read-preference / timeouts are set in code (MongoConfig) so they apply
+      # even when the URI omits them.
+      uri: ${MONGO_URI:${MONGO_READ_URI:mongodb://localhost:27017/main}}
+      auto-index-creation: false   # never let the app create indexes on the shared DB
+
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 32
+          max-idle: 16
+          min-idle: 4
+          max-wait: 1s
+
+  jackson:
+    default-property-inclusion: non_null   # omit nulls, matching typical Node JSON
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: ${PORT:8081}                 # runs alongside the Node service; gateway routes /v2 here
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/plain
+    min-response-size: 1024
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+      min-spare: 20
+    max-connections: 10000
+    accept-count: 200
+    connection-timeout: 20s
+    max-http-form-post-size: 5MB
+  max-http-request-header-size: 16KB
+  error:
+    include-message: never
+    include-stacktrace: never
+
+# Secrets are supplied ONLY via environment variables — never committed.
+# For local parity tests, export the TEST values (see README), not production keys.
+vedicmeet:
+  crypto:
+    secret-key: ${CRYPTO_SECRET_KEY:}
+  jwt:
+    secret: ${JWT_SECRET:}
+  chat:
+    # Node CHAT_SERVER_URL (utils/_constant.js). Used by support initiate_query / chat_send.
+    # No production fallback: a local/shadow launch must fail closed rather than call production.
+    server-url: ${CHAT_SERVER_URL:}
+  migration:
+    # Mutating /v2 routes stay blocked until their contract + data-side-effect sign-off is complete.
+    writes-enabled: ${MIGRATION_WRITES_ENABLED:false}
+  auth:
+    # Node-compatible authentication behavior. All mutating auth routes are ALSO protected by the
+    # migration write switch above, so adding this code never enables Java auth in production.
+    cache-ttl-seconds: ${AUTH_CACHE_TTL_SECONDS:600}
+    device-limit: ${LOGIN_LIMIT_DEVICE:15}
+    otp-proof-required-for-register: ${OTP_PROOF_REQUIRED_FOR_REGISTER:false}
+    otp-proof-ttl-seconds: ${OTP_PROOF_TTL_SECONDS:600}
+    # Compatibility modes mirror the current Node clients. Disable after clients send a password or
+    # a verifiable provider identity token; both old flows trust possession of an email address.
+    legacy-email-login-enabled: ${LEGACY_EMAIL_LOGIN_ENABLED:true}
+    legacy-social-email-enabled: ${LEGACY_SOCIAL_EMAIL_ENABLED:true}
+    admin-bootstrap-enabled: ${ADMIN_BOOTSTRAP_ENABLED:false}
+    password-reset-ttl-seconds: ${PASSWORD_RESET_TTL_SECONDS:900}
+    reset-url: ${ADMIN_RESET_PASSWORD_URL:}
+    msg91:
+      enabled: ${MSG91_ENABLED:false}
+      base-url: ${MSG91_BASE_URL:https://control.msg91.com}
+      auth-key: ${MSG91_AUTH_KEY:}
+      template-id: ${MSG91_TEMPLATE_ID:}
+    social:
+      google-enabled: ${GOOGLE_IDENTITY_VERIFICATION_ENABLED:false}
+      google-audience: ${GOOGLE_CLIENT_ID:}
+      google-token-info-url: ${GOOGLE_TOKEN_INFO_URL:https://oauth2.googleapis.com/tokeninfo}
+    mail:
+      enabled: ${AUTH_MAIL_ENABLED:false}
+      from: ${AUTH_MAIL_FROM:}
+  socket:
+    # Prompt F Socket.IO server (realtime/SocketIoConfig). OFF by default — enable only after
+    # protocol parity has been verified against a live Node peer and reviewed.
+    enabled: ${SOCKET_ENABLED:false}
+    port: ${SOCKET_PORT:8082}
+    # Uses Node's socket:io:emit bridge for Node/Java and multi-instance room delivery.
+    redis-fanout-enabled: ${SOCKET_REDIS_FANOUT_ENABLED:false}
+    # Cancelling/rejoining waitlists, post-call message limits and presence writes. Relay/read
+    # events may be shadowed with this false; enable only after /app contract tests pass.
+    app-session-writes-enabled: ${APP_SOCKET_WRITES_ENABLED:false}
+  call:
+    # Independent kill-switch for money + real-time call ownership. Both this and SOCKET_ENABLED must
+    # be true before Java can bind the /app namespace. Keep false until timer, FCM and settlement
+    # adapters pass the TEST-environment lifecycle/soak gate.
+    execution-enabled: ${CALL_EXECUTION_ENABLED:false}
+    # Java-owned durable timer callback worker. Required together with call execution; left off
+    # during shadow reads so Node remains the sole missed-call/billing-timeout owner.
+    timer-worker-enabled: ${CALL_TIMER_WORKER_ENABLED:false}
+    timer-poll-ms: ${CALL_TIMER_POLL_MS:500}
+    # Durable best-effort work after settlement (wallet notifications, coupons, analytics,
+    # chat summary and free-consultation continuation). Required before Java owns calls.
+    outbox-worker-enabled: ${CALL_OUTBOX_WORKER_ENABLED:false}
+    outbox-poll-ms: ${CALL_OUTBOX_POLL_MS:1000}
+  session:
+    # Independent route-ownership switch for POST /v1/user/session/book. Enabling writes alone must
+    # never make Java accept bookings; turn this on only after Node-vs-Java contract tests pass.
+    booking-enabled: ${SESSION_BOOKING_ENABLED:false}
+    # Remaining user/session mutations are independently gated. Fixed-session booking debits the
+    # wallet, so it has a second money-specific switch and cannot be enabled accidentally with the
+    # lighter history/screenshot/query commands.
+    commands-enabled: ${USER_SESSION_COMMANDS_ENABLED:false}
+    fixed-booking-enabled: ${USER_FIXED_SESSION_BOOKING_ENABLED:false}
+    audio-courier: ${SYSTEM_AUDIO_USAGE:}
+  live-event:
+    # /live_event writes, private-call settlement and replay loops remain independently disabled
+    # until the TEST mobile protocol, Redis timer and wallet-settlement soak tests pass.
+    execution-enabled: ${LIVE_EVENT_EXECUTION_ENABLED:false}
+    timer-worker-enabled: ${LIVE_EVENT_TIMER_WORKER_ENABLED:false}
+    timer-poll-ms: ${LIVE_EVENT_TIMER_POLL_MS:500}
+  livekit:
+    # Participant-token generation and Egress recording. Keep OFF until a TEST LiveKit/Egress
+    # deployment and TEST S3 bucket pass an end-to-end recording test.
+    enabled: ${LIVEKIT_ENABLED:false}
+    server-url: ${LIVEKIT_SERVER_URL:}
+    api-key: ${LIVEKIT_API_KEY:}
+    api-secret: ${LIVEKIT_API_SECRET:}
+    token-ttl-hours: ${LIVEKIT_TOKEN_TTL_HOURS:10}
+  consultant-session:
+    execution-enabled: ${CONSULTANT_SESSION_EXECUTION_ENABLED:false}
+    immediate-refund-enabled: ${CONSULTANT_IMMEDIATE_REFUND_ENABLED:false}
+  payout:
+    # MONEY. AdminPayoutService.uploadWithSettlement (admin/payout.js upload-with-settlement) moves funds.
+    # This is a SECOND, payout-specific gate on top of @MigrationWrite. Keep false until a human has reviewed
+    # the settlement port AND the multipart-file transport is wired. Never enable to pass a test.
+    execution-enabled: ${PAYOUT_EXECUTION_ENABLED:false}
+  task-reminder:
+    # Durable replacement for Node's in-process node-schedule reminders. It is intentionally
+    # independent and disabled until TEST FCM delivery + collection-name parity are signed off.
+    worker-enabled: ${TASK_REMINDER_WORKER_ENABLED:false}
+    poll-ms: ${TASK_REMINDER_POLL_MS:1000}
+  tracking:
+    # Public app/deep-link identifiers only. Keep environment-specific values outside source.
+    website-install-url: ${TRACKING_WEBSITE_INSTALL_URL:https://vedicmeet.com/install}
+    app-store-url: ${TRACKING_APP_STORE_URL:}
+    app-scheme: ${TRACKING_APP_SCHEME:}
+    android-package-name: ${TRACKING_ANDROID_PACKAGE_NAME:}
+    ios-app-id: ${TRACKING_IOS_APP_ID:}
+    matching-window-days: ${TRACKING_MATCHING_WINDOW_DAYS:7}
+    click-expiration-days: ${TRACKING_CLICK_EXPIRATION_DAYS:30}
+  notification:
+    # Node uses separate Firebase projects for users and consultants plus APNs PushKit for iOS.
+    # External credential/key FILE PATHS only; these transports are mandatory before Java owns calls.
+    fcm:
+      enabled: ${FCM_ENABLED:false}
+      user-service-account-path: ${FCM_USER_SERVICE_ACCOUNT_PATH:}
+      consultant-service-account-path: ${FCM_CONS_SERVICE_ACCOUNT_PATH:}
+      token-url: ${FCM_TOKEN_URL:https://oauth2.googleapis.com/token}
+      api-base-url: ${FCM_API_BASE_URL:https://fcm.googleapis.com}
+    apns:
+      enabled: ${APNS_VOIP_ENABLED:false}
+      signing-key-path: ${APNS_SIGNING_KEY_PATH:}
+      team-id: ${APNS_TEAM_ID:}
+      key-id: ${APNS_KEY_ID:}
+      user-bundle-id: ${APNS_USER_BUNDLE_ID:}
+      consultant-bundle-id: ${APNS_CONS_BUNDLE_ID:}
+      # Default is Apple's sandbox. Production must opt in explicitly via APNS_HOST.
+      host: ${APNS_HOST:https://api.sandbox.push.apple.com}
+  horoscope:
+    # External horoscope calls are read-only and fail open like Node. The API key is supplied only
+    # through the environment; with no key, details.horoscopeDetails remains null.
+    api-key: ${HOROSCOPE_API_KEY:}
+    daily-url: ${HOROSCOPE_DAILY_URL:https://divineapi.com/api/1.0/get_daily_horoscope.php}
+    weekly-url: ${HOROSCOPE_WEEKLY_URL:https://divineapi.com/api/1.0/get_weekly_horoscope.php}
+    monthly-url: ${HOROSCOPE_MONTHLY_URL:https://divineapi.com/api/1.0/get_monthly_horoscope.php}
+    yearly-url: ${HOROSCOPE_YEARLY_URL:https://divineapi.com/api/1.0/get_yearly_horoscope.php}
+  vastu:
+    video-url: ${VASTU_COMPASS_VIDEO:https://www.youtube.com/watch?v=CjVQ5GkLMhY&ab_channel=VedicMeet%C2%AE}
+    info-video-url: ${VASTU_COMPASS_VIDEO_INFO:https://www.youtube.com/watch?v=zsfGOb38E1E&ab_channel=VedicMeet%C2%AE}
+    video-image-url: ${VASTU_COMPASS_VIDEO_IMAGE:https://firebasestorage.googleapis.com/v0/b/occult-science-vedicmeet.appspot.com/o/apps%2FWHy%20Vastu%20is%20imporatnt.webp?alt=media}
+    info-image-url: ${VASTU_COMPASS_VIDEO_INFO_IMAGE:https://firebasestorage.googleapis.com/v0/b/occult-science-vedicmeet.appspot.com/o/apps%2FCentre%20of%20the%20house.webp?alt=media}
+  cron:
+    # Scheduled jobs (cron/CronScheduler). OFF by default - these WRITE to the shared DB, so enable
+    # only after human review + MIGRATION_WRITES_ENABLED + on exactly one instance. Each job also
+    # takes the Redis cron lock. Payment reconciliation has an additional independent money switch.
+    enabled: ${CRON_ENABLED:false}
+    payment-reconcile-enabled: ${PAYMENT_RECONCILIATION_ENABLED:false}
+    # Every business family is separately armed. CRON_ENABLED alone performs no legacy job.
+    maintenance-enabled: ${CRON_MAINTENANCE_ENABLED:false}
+    missed-retry-enabled: ${CRON_MISSED_RETRY_ENABLED:false}
+    fixed-session-enabled: ${CRON_FIXED_SESSION_ENABLED:false}
+    next-available-enabled: ${CRON_NEXT_AVAILABLE_ENABLED:false}
+    uninstall-enabled: ${CRON_UNINSTALL_ENABLED:false}
+    pabbly-enabled: ${CRON_PABBLY_ENABLED:false}
+    interakt-enabled: ${CRON_INTERAKT_ENABLED:false}
+    missed-retry-first-minutes: ${MISSED_RETRY_FIRST_MINUTES:30}
+    missed-retry-second-hours: ${MISSED_RETRY_SECOND_HOURS:24}
+    missed-retry-busy-defer-minutes: ${MISSED_RETRY_BUSY_DEFER_MINUTES:5}
+    missed-retry-batch-limit: ${MISSED_RETRY_BATCH_LIMIT:100}
+    uninstall-inactive-days: ${UNINSTALL_INACTIVE_DAYS:7}
+    uninstall-batch-limit: ${UNINSTALL_BATCH_LIMIT:1000}
+    recharge-offer: ${CRON_RECHARGE_OFFER:0 */5 * * * *}
+    payment-reconcile: ${CRON_PAYMENT_RECONCILE:0 */5 * * * *}
+  cors:
+    # Comma-separated allowed origins. Lock these down in each environment.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  aws:
+    # Media upload (utils/aws/upload.js). Client built lazily; supply creds per-environment (never here).
+    access-key: ${AWS_ACCESS_KEY:}
+    secret-key: ${AWS_SECRET_KEY:}
+    region: ${AWS_REGION:}
+    bucket: ${AWS_S3_BUCKET:}
+    project-name: ${AWS_PROJECT_NAME:Vedic_Meet}
+  payment:
+    razorpay-webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+    phonepe:
+      enabled: ${PHONEPE_ENABLED:false}
+      client-id: ${PHONEPE_CLIENT_ID:}
+      client-secret: ${PHONEPE_CLIENT_SECRET:}
+      auth-url: ${PHONEPE_AUTH_URL:}
+      status-base-url: ${PHONEPE_STATUS_BASE_URL:}
+    paytm:
+      enabled: ${PAYTM_ENABLED:false}
+      merchant-id: ${PAYTM_MERCHANT_ID:}
+      merchant-key: ${PAYTM_MERCHANT_KEY:}
+      base-url: ${PAYTM_BASE_URL:}
+      callback-url: ${PAYTM_CALLBACK_URL:}
+      website-name: ${PAYTM_WEBSITE_NAME:}
+  integrations:
+    pabbly:
+      # The Node URL is a secret-like webhook capability. Supply it only via environment/secret store.
+      enabled: ${PABBLY_ENABLED:false}
+      webhook-url: ${PABBLY_WEBHOOK_URL:}
+    meta:
+      # External purchase analytics. Keep off until a TEST event is visible in Meta Events Manager.
+      enabled: ${META_CONVERSIONS_ENABLED:false}
+      pixel-id: ${META_PIXEL_ID:}
+      access-token: ${META_ACCESS_TOKEN:}
+      api-version: ${META_API_VERSION:v18.0}
+      test-event-code: ${META_TEST_EVENT_CODE:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true          # exposes /actuator/health/liveness and /readiness
+      show-details: never
+      group:
+        # Readiness must reflect the datastores the shadow service actually needs — otherwise an
+        # orchestrator routes traffic to an instance that cannot reach Mongo/Redis (it would report UP).
+        readiness:
+          include: readinessState,mongo,redis
+        liveness:
+          include: livenessState
+  health:
+    mongo:
+      enabled: true
+    redis:
+      enabled: true
+
+logging:
+  pattern:
+    # Correlation id (set by RequestLoggingFilter) in every log line for tracing.
+    level: "%5p [${spring.application.name}] [%X{correlationId:-}]"
+  level:
+    root: INFO
+    com.vedicmeet.appserver: INFO

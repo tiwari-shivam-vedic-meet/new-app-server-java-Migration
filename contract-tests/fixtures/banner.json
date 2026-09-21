@@ -1,0 +1,23 @@
+[
+  {
+    "name": "banner_user",
+    "nodePath": "/api/v1/banner?userType=user",
+    "javaPath": "/v2/v1/banner?userType=user",
+    "method": "GET",
+    "headers": { "vm-user-auth": "${USER_JWT}", "app-device-language": "en" },
+    "ignore": []
+  },
+  {
+    "name": "banner_cons",
+    "nodePath": "/api/v1/banner?userType=cons",
+    "javaPath": "/v2/v1/banner?userType=cons",
+    "method": "GET",
+    "headers": { "authorization": "${CONS_JWT}", "app-device-language": "en" },
+    "ignore": [
+      "result.boostData.totalBoostDuration",
+      "result.boostData.lastBoostDate",
+      "result.boostData.updatedAt"
+    ],
+    "_note": "cons branch WRITES boost state; totalBoostDuration/lastBoostDate depend on wall-clock time so are ignored. The response diff does NOT verify the write itself — assert the consultant_boosts document separately, per BANNER_PHASE2_SPEC.md."
+  }
+]
